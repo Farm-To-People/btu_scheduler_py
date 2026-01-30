@@ -65,8 +65,8 @@ class BtuTaskSchedule():
 	argument_overrides: Union[NoneType, str]
 	schedule_description: str
 	cron_string: str
-	run_frequency: str
 	cron_timezone: ZoneInfo
+	run_frequency: str = "Cron Style"  # Default for backwards compatibility with old records
 	redis_job_id: Union[NoneType, str] = None  # Not all schedules will have a Redis Job yet
 
 	@staticmethod
@@ -84,8 +84,8 @@ class BtuTaskSchedule():
 			argument_overrides=schedule_data["argument_overrides"],
 			schedule_description=schedule_data["schedule_description"],
 			cron_string=schedule_data["cron_string"],
-			run_frequency=schedule_data["run_frequency"],
 			cron_timezone=schedule_data["cron_timezone"],
+			run_frequency=schedule_data["run_frequency"] or "Cron Style",
 		)
 
 	async def to_rq_job_wrapper(self):
