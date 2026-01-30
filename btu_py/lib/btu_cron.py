@@ -112,10 +112,20 @@ def cron_str_to_cron_str7 (cron_expression_string: str) -> str:
 def tz_cron_to_utc_datetimes(cron_expression_string: str,
 							 cron_timezone: [str, ZoneInfo],
 							 from_utc_datetime: [DateTimeType, NoneType],
-							 number_of_results: int=1) -> list[DateTimeType]:
+							 number_of_results: int=1,
+							 cron_is_utc: bool=True) -> list[DateTimeType]:
 	"""
 		Given a cron string and Time Zone, what are the next set of UTC Datetime values?
 		Documentation: https://docs.rs/cron/0.9.0/cron
+
+		Args:
+			cron_expression_string: The cron schedule string
+			cron_timezone: The timezone for interpreting the cron string (only used if cron_is_utc=False)
+			from_utc_datetime: Starting point for calculating next runtimes
+			number_of_results: How many future runtimes to calculate
+			cron_is_utc: If True, the cron string hours are already in UTC (Frappe-converted).
+			             If False, the cron string is in local timezone and needs conversion.
+			             BTU Task Schedules with run_frequency != 'Cron Style' are already UTC.
 	"""
 
 	# NOTE 1:  This is a VERY simplistic implementation.
@@ -148,7 +158,14 @@ def tz_cron_to_utc_datetimes(cron_expression_string: str,
 	if isinstance(this_cronstruct.hour, NoneType) or this_cronstruct.hour == "*":
 		return result_datetimes
 
-	# Secenario 2: A specific Hour of the day.
+	# Scenario #2: The cron string is already in UTC (default for Frappe-managed schedules).
+	# The schedule_to_cron_string() function in Frappe BTU already converts local time to UTC,
+	# so we just return the croniter results directly - no conversion needed.
+	if cron_is_utc:
+		return result_datetimes
+
+	# Scenario #3: A specific Hour of the day in LOCAL timezone (only for 'Cron Style' schedules).
+	# User entered a raw cron string in their local timezone, so we need to convert to UTC.
 	#	1. Strip the time zone component, so the UTC DateTime becomes a Naive Datetime.
 	#	2. Change to Local Times by applying the function argument `cron_timezone`
 	#	   At this point, it's as-if croniter generated a Local time in the first place.

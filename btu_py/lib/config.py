@@ -47,6 +47,7 @@ def get_config_schema():
 
 			"rq_host": And(str, len),
 			"rq_port": int,
+			Optional("rq_ssl"): bool,
 
 			"tcp_socket_port": And(int),
 			"socket_path": And(str, len),

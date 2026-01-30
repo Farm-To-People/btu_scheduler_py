@@ -73,6 +73,7 @@ async def get_task_schedule_by_id(task_schedule_id: str) -> dict:
 			,TaskSchedule.argument_overrides
 			,TaskSchedule.schedule_description
 			,TaskSchedule.cron_string
+			,TaskSchedule.run_frequency
 			,Configuration.value									AS cron_timezone
 		FROM
 			{quote("tabBTU Task Schedule")}		AS TaskSchedule

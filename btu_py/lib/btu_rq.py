@@ -29,9 +29,11 @@ def create_connection():
 	if not get_config().as_dictionary():
 		raise RuntimeError("Application configuration is not loaded.")
 
+	config = get_config().as_dictionary()
 	return redis.StrictRedis(
-		host= get_config().as_dictionary()["rq_host"],
-		port= get_config().as_dictionary()["rq_port"],
+		host=config["rq_host"],
+		port=config["rq_port"],
+		ssl=config.get("rq_ssl", False),
 		decode_responses=True
 	)
 
@@ -39,9 +41,11 @@ def create_raw_connection():
 	if not get_config().as_dictionary():
 		raise RuntimeError("Application configuration is not loaded.")
 
+	config = get_config().as_dictionary()
 	return redis.StrictRedis(
-		host= get_config().as_dictionary()["rq_host"],
-		port= get_config().as_dictionary()["rq_port"],
+		host=config["rq_host"],
+		port=config["rq_port"],
+		ssl=config.get("rq_ssl", False),
 		decode_responses=False,
 		encoding=None
 	)
