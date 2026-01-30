@@ -65,6 +65,7 @@ class BtuTaskSchedule():
 	argument_overrides: Union[NoneType, str]
 	schedule_description: str
 	cron_string: str
+	run_frequency: str
 	cron_timezone: ZoneInfo
 	redis_job_id: Union[NoneType, str] = None  # Not all schedules will have a Redis Job yet
 
@@ -83,6 +84,7 @@ class BtuTaskSchedule():
 			argument_overrides=schedule_data["argument_overrides"],
 			schedule_description=schedule_data["schedule_description"],
 			cron_string=schedule_data["cron_string"],
+			run_frequency=schedule_data["run_frequency"],
 			cron_timezone=schedule_data["cron_timezone"],
 		)
 
@@ -100,12 +102,17 @@ class BtuTaskSchedule():
 		return wrapped_job
 
 	def get_next_runtimes(self, from_utc_datetime=None, number_results=1) -> list[DateTimeType]:
+		# For 'Cron Style' schedules, the user entered a raw cron string (likely in local time).
+		# For all other frequencies (Hourly, Daily, Weekly, Monthly, Yearly), the Frappe BTU app
+		# already converts the user's local time to UTC in schedule_to_cron_string().
+		cron_is_utc = (self.run_frequency != 'Cron Style')
 
 		return btu_cron.tz_cron_to_utc_datetimes(
 				self.cron_string,
 				self.cron_timezone,
 				from_utc_datetime,
-				number_results
+				number_results,
+				cron_is_utc=cron_is_utc
 		)
 
 	def enqueue_for_next_available_worker(self):
