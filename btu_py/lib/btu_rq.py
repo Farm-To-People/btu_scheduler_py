@@ -34,6 +34,8 @@ def create_connection():
 		host=config["rq_host"],
 		port=config["rq_port"],
 		ssl=config.get("rq_ssl", False),
+		username=config.get("rq_username"),
+		password=config.get("rq_password"),
 		decode_responses=True
 	)
 
@@ -46,6 +48,8 @@ def create_raw_connection():
 		host=config["rq_host"],
 		port=config["rq_port"],
 		ssl=config.get("rq_ssl", False),
+		username=config.get("rq_username"),
+		password=config.get("rq_password"),
 		decode_responses=False,
 		encoding=None
 	)
