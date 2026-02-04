@@ -30,10 +30,12 @@ def create_connection():
 		raise RuntimeError("Application configuration is not loaded.")
 
 	config = get_config().as_dictionary()
+	ssl_cert_reqs = "required" if config.get("rq_ssl_verify", True) else None
 	return redis.StrictRedis(
 		host=config["rq_host"],
 		port=config["rq_port"],
 		ssl=config.get("rq_ssl", False),
+		ssl_cert_reqs=ssl_cert_reqs,
 		username=config.get("rq_username"),
 		password=config.get("rq_password"),
 		decode_responses=True
@@ -44,10 +46,12 @@ def create_raw_connection():
 		raise RuntimeError("Application configuration is not loaded.")
 
 	config = get_config().as_dictionary()
+	ssl_cert_reqs = "required" if config.get("rq_ssl_verify", True) else None
 	return redis.StrictRedis(
 		host=config["rq_host"],
 		port=config["rq_port"],
 		ssl=config.get("rq_ssl", False),
+		ssl_cert_reqs=ssl_cert_reqs,
 		username=config.get("rq_username"),
 		password=config.get("rq_password"),
 		decode_responses=False,
