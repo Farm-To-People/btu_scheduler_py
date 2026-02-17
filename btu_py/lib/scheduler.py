@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import btu_py
 from btu_py import get_logger
-from btu_py.lib.btu_rq import create_connection
+from btu_py.lib.btu_rq import get_redis
 from btu_py.lib.sql import get_enabled_task_schedules
 from btu_py.lib.structs import BtuTaskSchedule
 
@@ -155,9 +155,7 @@ def add_task_schedule_to_rq(task_schedule: BtuTaskSchedule):
 	# print(f"Next Execution Timestamp: {rq_scheduled_task.next_execution_as_unix_timestamp}")
 	# print(f"Next Execution TISK: {rq_scheduled_task.to_tsik()}")
 
-	redis_conn = create_connection()
-	if not redis_conn:
-		return
+	redis_conn = get_redis()
 
 	# NOTE:  Earlier versions of zadd accepted 3 values: "redis_key_name", data, score.
 	#        Now you must pass 2: "redis_key_name" plus a dictionary:  {data1: score1, data2: score2}
@@ -198,10 +196,7 @@ def fetch_task_schedules_ready_for_rq(sched_before_unix_time: int) -> list:
 	# rq_print_scheduled_tasks(&app_config);
 
 	get_logger().debug("fetch_task_schedules_ready_for_rq() : reviewing 'Next Execution Times' for each Task Schedule in Redis...")
-	redis_conn = create_connection()
-	if not redis_conn:
-		get_logger().error("fetch_task_schedules_ready_for_rq(): Cannot establish connection to Redis; returning an empty list.")
-		return []
+	redis_conn = get_redis()
 
 	# TODO: As per Redis 6.2.0, the command 'zrangebyscore' is considered deprecated.
 	# Please prefer using the ZRANGE command with the BYSCORE argument in new code.
@@ -241,10 +236,7 @@ async def run_immediate_scheduled_task(task_schedule_instance: RQScheduledTask, 
 	Create a Python RQ Task and assign to a Queue, so the next available worker can run it.
 	"""
 	get_logger().info(f">>>>> Time To Make The Donuts! (enqueuing Redis Job '{task_schedule_instance.task_schedule_id}' for immediate execution)")
-	redis_conn = create_connection()
-	if not redis_conn:
-		get_logger().error("Early exit from run_immediate_scheduled_task(); cannot establish a connection to Redis database.")
-		return  # If cannot connect to Redis, do not panic the thread.  Instead, return an empty Vector.
+	redis_conn = get_redis()
 
 	# 1. Read the SQL database to construct a BTU Task Schedule struct.
 	try:
@@ -284,10 +276,7 @@ def rq_get_scheduled_tasks() -> list[RQScheduledTask]:
 	"""
 	Query Redis for the values held in key RQ_KEY_SCHEDULED_TASKS
 	"""
-	redis_conn = create_connection()
-	if not redis_conn:
-		get_logger().warning("In lieu of a Redis Connection, returning an empty vector.")
-		return []
+	redis_conn = get_redis()
 
 	redis_result: tuple = redis_conn.zscan(RQ_KEY_SCHEDULED_TASKS)  # (0, [('TS-000007|1742607180', 1742607180.0), ('TS-000007|1742607360', 1742607360.0) ])
 	list_of_tsik_string = [ each[0] for each in redis_result[1] ]
@@ -303,16 +292,16 @@ def rq_cancel_scheduled_task(task_schedule_id: str) -> tuple:
 	# As of changes made May 21st 2022, the members in the Ordered Set 'btu_scheduler:task_execution_times'
 	# are not just Task Schedule ID's.  The Unix Time is a suffix.  Removing members now requires some "starts_with" logic.
 
-	with create_connection() as redis_conn:
+	redis_conn = get_redis()
 
-		# First, list all the keys using 'zrange btu_scheduler:task_execution_times 0 -1'
-		all_task_schedules = redis_conn.zrange(RQ_KEY_SCHEDULED_TASKS, 0, -1)
-		removed: bool = False
+	# First, list all the keys using 'zrange btu_scheduler:task_execution_times 0 -1'
+	all_task_schedules = redis_conn.zrange(RQ_KEY_SCHEDULED_TASKS, 0, -1)
+	removed: bool = False
 
-		for each_row in all_task_schedules:
-			if each_row.startswith(task_schedule_id):
-				redis_result = redis_conn.zrem(RQ_KEY_SCHEDULED_TASKS, each_row)
-				removed = True
+	for each_row in all_task_schedules:
+		if each_row.startswith(task_schedule_id):
+			redis_result = redis_conn.zrem(RQ_KEY_SCHEDULED_TASKS, each_row)
+			removed = True
 
 	if removed:
 		get_logger().info("Scheduled Task successfully removed from Redis Queue.")
@@ -336,10 +325,7 @@ def clear_all_scheduled_tasks() -> bool:
 	"""
 	Clear all scheduled tasks from the Redis database.
 	"""
-	redis_conn = create_connection()
-	if not redis_conn:
-		get_logger().error("clear_all_scheduled_tasks(): Cannot establish connection to Redis database.")
-		return False
+	redis_conn = get_redis()
 	redis_conn.zremrangebyrank(RQ_KEY_SCHEDULED_TASKS, 0, -1)
 	return True
 

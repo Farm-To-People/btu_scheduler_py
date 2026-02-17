@@ -1,0 +1,3 @@
+[console_scripts]
+local-crontab = local_crontab.cmd_line:main
+

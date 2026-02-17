@@ -7,8 +7,8 @@ def test_redis():
 	"""
 	Test the connection to the Redis database.
 	"""
-	from btu_py.lib.btu_rq import create_connection
-	conn = create_connection()
+	from btu_py.lib.btu_rq import get_redis
+	conn = get_redis()
 	return conn.ping()
 
 
@@ -161,10 +161,10 @@ def test_rq_hello_world():
 	"""
 	import rq
 	from rq import Queue
-	from btu_py.lib.btu_rq import create_connection
+	from btu_py.lib.btu_rq import get_redis
 
 	# Create a new RQ Job.
-	q = Queue(name="erpnext-mybench:short", connection=create_connection(decode_responses=True))
+	q = Queue(name="erpnext-mybench:short", connection=get_redis())
 	result = q.enqueue(
 		ping_now
 	)
@@ -182,7 +182,7 @@ def test_rq_hello_world():
 	# A byte consists of 8 bits, and a single hex character can represent 4 bits.  So 2 hexadecimal characters represent 1 byte.
 
 	# Read the 'data' key from Redis database.  Do NOT decode the responses!
-	actual_data_string = create_connection(decode_responses=False).hget(f"rq:job:{new_job_id}", "data")
+	actual_data_string = get_redis().hget(f"rq:job:{new_job_id}", "data")
 	if not actual_data_string == expected_data_string:
 		raise RuntimeError("These bytes should absolutely be identical.")
 
