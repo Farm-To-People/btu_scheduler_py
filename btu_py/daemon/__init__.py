@@ -6,6 +6,7 @@ import asyncio
 
 import btu_py
 from btu_py.lib import config
+from btu_py.lib.btu_rq import init_redis
 from btu_py.lib.tests import test_redis, test_sql
 from btu_py.lib.scheduler import queue_full_refill
 from btu_py.lib.utils import is_port_in_use
@@ -31,12 +32,8 @@ async def main():
 	unix_socket_enabled = not bool(btu_py.get_config().as_dictionary().get("disable_unix_socket", False))
 	tcp_socket_enabled = not bool(btu_py.get_config().as_dictionary().get("disable_tcp_socket", False))
 
-	# Make sure Redis is available.
-	try:
-		test_redis()  # Synchronous function.
-	except Exception as ex:
-		btu_py.get_logger().error(f"Unable to connect to Frappe Redis queue: {ex}")
-		return
+	# Initialize the shared Redis connection (exits the process if unreachable).
+	init_redis()
 
 	await test_sql(quiet=True)
 

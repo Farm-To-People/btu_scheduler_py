@@ -5,6 +5,7 @@
 from __future__ import annotations  # Defers evalulation of type annonations; hopefully unnecessary once Python 3.14 is released.
 from dataclasses import dataclass
 from datetime import datetime as DateTimeType
+import sys
 from typing import Union
 import uuid
 from zoneinfo import ZoneInfo
@@ -22,41 +23,52 @@ def datetime_to_rq_date_string(some_datetime):
 	return some_datetime.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
-def create_connection():
+_redis_conn: redis.StrictRedis | None = None
+
+
+def init_redis() -> None:
 	"""
-	Creates a connection to the Redis database.
+	Initialize the - shared - Redis connection at startup.
+	Validates connectivity with a ping; terminates the process if Redis is unreachable.
+	Must be called once before any other Redis operations.
 	"""
+	global _redis_conn  # noqa: PLW0603
+
 	if not get_config().as_dictionary():
 		raise RuntimeError("Application configuration is not loaded.")
 
 	config = get_config().as_dictionary()
 	ssl_cert_reqs = "required" if config.get("rq_ssl_verify", True) else None
-	return redis.StrictRedis(
+	_redis_conn = redis.StrictRedis(
 		host=config["rq_host"],
 		port=config["rq_port"],
 		ssl=config.get("rq_ssl", False),
 		ssl_cert_reqs=ssl_cert_reqs,
 		username=config.get("rq_username"),
 		password=config.get("rq_password"),
-		decode_responses=True
+		decode_responses=True,
+		retry_on_timeout=True,
 	)
 
-def create_raw_connection():
-	if not get_config().as_dictionary():
-		raise RuntimeError("Application configuration is not loaded.")
+	try:
+		_redis_conn.ping()
+	except (redis.exceptions.ConnectionError, redis.exceptions.AuthenticationError, redis.exceptions.TimeoutError) as ex:
+		# Log and crash on fail to connect
+		get_logger().critical(f"Cannot connect to Redis at {config['rq_host']}:{config['rq_port']}: {ex}")
+		sys.exit(1)
 
-	config = get_config().as_dictionary()
-	ssl_cert_reqs = "required" if config.get("rq_ssl_verify", True) else None
-	return redis.StrictRedis(
-		host=config["rq_host"],
-		port=config["rq_port"],
-		ssl=config.get("rq_ssl", False),
-		ssl_cert_reqs=ssl_cert_reqs,
-		username=config.get("rq_username"),
-		password=config.get("rq_password"),
-		decode_responses=False,
-		encoding=None
-	)
+	get_logger().info(f"Redis connection established to {config['rq_host']}:{config['rq_port']}")
+
+
+def get_redis() -> redis.StrictRedis:
+	"""
+	Return the shared Redis connection.
+	"""
+	if _redis_conn is None:
+		# If there is no connection, crash.
+		raise RuntimeError("Redis not initialized. Call init_redis() first.")
+	return _redis_conn
+
 
 @dataclass
 class RQJobWrapper():
